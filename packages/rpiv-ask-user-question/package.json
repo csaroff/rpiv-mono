@@ -33,9 +33,11 @@
 		"ask-user-question.ts",
 		"rpc-fallback.ts",
 		"config.ts",
+		"constants.ts",
 		"events.ts",
 		"index.ts",
 		"reconcile.ts",
+		"registration.ts",
 		"LICENSE",
 		"locales/",
 		"docs/",
@@ -58,6 +60,7 @@
 		"tool/format-answer.ts",
 		"tool/normalize-params.ts",
 		"tool/response-envelope.ts",
+		"tool/schema.ts",
 		"tool/types.ts",
 		"tool/validate-questionnaire.ts",
 		"view/component-binding.ts",
@@ -95,7 +98,6 @@
 		}
 	},
 	"dependencies": {
-		"@juicesharp/rpiv-config": "^2.9.0",
-		"typebox": "^1.1.24"
+		"@juicesharp/rpiv-config": "^2.9.0"
 	}
 }

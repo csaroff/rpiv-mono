@@ -1,12 +1,6 @@
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { isKeyRelease, isKeyRepeat, matchesKey, type OverlayHandle, type TUI } from "@earendil-works/pi-tui";
-import {
-	COLLAPSE_KEY_OFF,
-	formatKeySpecForDisplay,
-	loadConfig,
-	resolveCollapseKey,
-	validateGuidanceFields,
-} from "./config.js";
+import { COLLAPSE_KEY_OFF, formatKeySpecForDisplay, loadConfig, resolveCollapseKey } from "./config.js";
 import {
 	ASK_USER_BLOCKED_EVENT,
 	ASK_USER_PROMPT_EVENT,
@@ -28,7 +22,6 @@ import {
 	type QuestionnaireError,
 	type QuestionnaireResult,
 	type QuestionParams,
-	QuestionParamsSchema,
 } from "./tool/types.js";
 import { validateQuestionnaire } from "./tool/validate-questionnaire.js";
 import type { WrappingSelectItem } from "./view/components/wrapping-select.js";
@@ -70,9 +63,6 @@ async function runRpcPath(pi: ExtensionAPI, ui: DialogUI, typed: QuestionParams)
 	}
 }
 
-/** Canonical tool name — single source of truth shared with the reconcile module. */
-export const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
-
 const ERROR_NO_UI = "Error: UI not available (running in non-interactive mode)";
 
 const ERROR_NO_CUSTOM_UI =
@@ -101,9 +91,6 @@ function emitTerminalAttention(): void {
 		// Terminal attention is best effort; the questionnaire must still proceed.
 	}
 }
-
-/** Delay before the background session-graph pre-warm; mirrors rpiv-workflow's /wf prewarm. */
-export const PREWARM_DELAY_MS = 2000;
 
 type SessionModule = typeof import("./state/questionnaire-session.js");
 
@@ -245,21 +232,6 @@ async function resolveUndefinedResult(ctx: ExtensionContext, typed: QuestionPara
 	return buildToolResult(ERROR_NO_CUSTOM_UI, { answers: [], cancelled: true, error: "no_custom_ui" });
 }
 
-/**
- * Pre-warm the lazy session graph once startup settles (#107). A graph
- * evaluated while the paths Pi resolved at boot still exist stays in memory
- * for the process lifetime, so later on-disk dependency churn (e.g. `pnpm
- * install --force` replacing the store mid-session) can no longer poison
- * jiti's graph cache. Swallowed failure is safe: the first real call
- * re-imports and surfaces it through loadQuestionnaireSession's structured
- * envelope. unref keeps the timer from holding a non-TUI embedder's process
- * open.
- */
-function prewarmSessionGraph(): void {
-	const timer = setTimeout(() => void loadQuestionnaireSession().catch(() => undefined), PREWARM_DELAY_MS);
-	timer.unref?.();
-}
-
 export function buildItemsForQuestion(question: QuestionData): WrappingSelectItem[] {
 	const items: WrappingSelectItem[] = question.options.map((o) => ({
 		kind: "option",
@@ -300,113 +272,106 @@ Use the optional \`preview\` field on options when presenting concrete artifacts
 
 Preview content is rendered as markdown in a monospace box. Multi-line text with newlines is supported. When any option has a preview, the UI switches to a side-by-side layout with a vertical option list on the left and preview on the right. Do not use previews for simple preference questions where labels and descriptions suffice. Note: previews are only supported for single-select questions (not multiSelect).`;
 
-export function registerAskUserQuestionTool(pi: ExtensionAPI): void {
-	const guidance = validateGuidanceFields(loadConfig().guidance);
-	pi.registerTool({
-		name: ASK_USER_QUESTION_TOOL_NAME,
-		label: "Ask User Question",
-		description: guidance.description ?? DEFAULT_TOOL_DESCRIPTION,
-		promptSnippet: guidance.promptSnippet ?? DEFAULT_PROMPT_SNIPPET,
-		promptGuidelines: guidance.promptGuidelines ?? DEFAULT_PROMPT_GUIDELINES,
-		parameters: QuestionParamsSchema,
+type AskUserQuestionTool = Parameters<ExtensionAPI["registerTool"]>[0];
+type AskUserQuestionExecute = AskUserQuestionTool["execute"];
 
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			// Line-terminator normalization runs once here, ahead of validation, so
-			// every downstream consumer — validator, TUI, RPC walker, envelope, prompt
-			// event — sees the same clean text (#192).
-			const typed = normalizeQuestionParams(params as unknown as QuestionParams);
-			if (!ctx.hasUI) return rejectWithoutUi();
+export function createAskUserQuestionExecutor(pi: ExtensionAPI): AskUserQuestionExecute {
+	return async (_toolCallId, params, _signal, _onUpdate, ctx) => {
+		// Line-terminator normalization runs once here, ahead of validation, so
+		// every downstream consumer — validator, TUI, RPC walker, envelope, prompt
+		// event — sees the same clean text (#192).
+		const typed = normalizeQuestionParams(params as unknown as QuestionParams);
+		if (!ctx.hasUI) return rejectWithoutUi();
 
-			const validation = validateQuestionnaire(typed);
-			if (!validation.ok) {
-				return buildToolResult(validation.message, {
-					answers: [],
-					cancelled: true,
-					error: validation.error,
-				});
-			}
+		const validation = validateQuestionnaire(typed);
+		if (!validation.ok) {
+			return buildToolResult(validation.message, {
+				answers: [],
+				cancelled: true,
+				error: validation.error,
+			});
+		}
 
-			// Emit event for external listeners (e.g., notification plugins)
-			emitAskUserPromptEvent(pi, typed);
+		// Emit event for external listeners (e.g., notification plugins)
+		emitAskUserPromptEvent(pi, typed);
 
-			// RPC hosts (VSCode pendant, ACP clients like Zed/Paseo — issue #78):
-			// ui.custom() cannot render there, but the select/input dialog
-			// sub-protocol works. Hosts that advertise ctx.mode (pi ≥0.79) route to
-			// the sequential dialog walker up front, skipping the TUI render-graph
-			// import entirely; RPC builds that predate ctx.mode are caught by the
-			// custom()-resolved-undefined backstop below. See ./rpc-fallback.ts.
-			if ((ctx as { mode?: string }).mode === "rpc" && hasDialogUI(ctx.ui)) {
-				return runRpcPath(pi, ctx.ui, typed);
-			}
+		// RPC hosts (VSCode pendant, ACP clients like Zed/Paseo — issue #78):
+		// ui.custom() cannot render there, but the select/input dialog
+		// sub-protocol works. Hosts that advertise ctx.mode (pi ≥0.79) route to
+		// the sequential dialog walker up front, skipping the TUI render-graph
+		// import entirely; RPC builds that predate ctx.mode are caught by the
+		// custom()-resolved-undefined backstop below. See ./rpc-fallback.ts.
+		if ((ctx as { mode?: string }).mode === "rpc" && hasDialogUI(ctx.ui)) {
+			return runRpcPath(pi, ctx.ui, typed);
+		}
 
-			const itemsByTab: WrappingSelectItem[][] = typed.questions.map((q) => buildItemsForQuestion(q));
+		const itemsByTab: WrappingSelectItem[][] = typed.questions.map((q) => buildItemsForQuestion(q));
 
-			// Lazy — QuestionnaireSession pulls the ~560ms view/TUI render graph;
-			// load it only when the tool runs, not at extension registration.
-			const sessionLoad = await loadQuestionnaireSession();
-			if (!sessionLoad.ok) {
-				return buildToolResult(sessionLoad.message, { answers: [], cancelled: true, error: sessionLoad.error });
-			}
-			const { QuestionnaireSession } = sessionLoad.module;
-			// Resolve the collapse/expand key spec from config. Default is `ctrl+]`; users
-			// with non-US layouts (e.g. Latin American, where `]` is shifted) can override
-			// via the `collapseKey` config field. `resolveCollapseKey` also accepts the
-			// sentinel value `"off"` to disable the shortcut entirely.
-			const collapseKey = resolveCollapseKey(loadConfig());
+		// Lazy — QuestionnaireSession pulls the ~560ms view/TUI render graph;
+		// load it only when the tool runs, not at extension registration.
+		const sessionLoad = await loadQuestionnaireSession();
+		if (!sessionLoad.ok) {
+			return buildToolResult(sessionLoad.message, { answers: [], cancelled: true, error: sessionLoad.error });
+		}
+		const { QuestionnaireSession } = sessionLoad.module;
+		// Resolve the collapse/expand key spec from config. Default is `ctrl+]`; users
+		// with non-US layouts (e.g. Latin American, where `]` is shifted) can override
+		// via the `collapseKey` config field. `resolveCollapseKey` also accepts the
+		// sentinel value `"off"` to disable the shortcut entirely.
+		const collapseKey = resolveCollapseKey(loadConfig());
 
-			// Capture the overlay handle so the session can call `setHidden()` when the
-			// user toggles collapse, and register a raw terminal input listener for the
-			// same key so the toggle still works while the overlay is hidden (pi-tui does
-			// not route input to a hidden overlay's `component.handleInput`).
-			const sessionRef: SessionRef = { current: null };
-			const overlayHandleRef: OverlayHandleRef = { current: undefined };
-			const removeOverlayInputListener = registerCollapseKeyListener(ctx, collapseKey, sessionRef, overlayHandleRef);
-			// Hiding the overlay is only reversible through the raw listener above, so
-			// the session may emit `setHidden` only when it was actually registered;
-			// otherwise collapse falls back to the visible one-line row.
-			const canReopenWhileHidden = removeOverlayInputListener !== undefined;
+		// Capture the overlay handle so the session can call `setHidden()` when the
+		// user toggles collapse, and register a raw terminal input listener for the
+		// same key so the toggle still works while the overlay is hidden (pi-tui does
+		// not route input to a hidden overlay's `component.handleInput`).
+		const sessionRef: SessionRef = { current: null };
+		const overlayHandleRef: OverlayHandleRef = { current: undefined };
+		const removeOverlayInputListener = registerCollapseKeyListener(ctx, collapseKey, sessionRef, overlayHandleRef);
+		// Hiding the overlay is only reversible through the raw listener above, so
+		// the session may emit `setHidden` only when it was actually registered;
+		// otherwise collapse falls back to the visible one-line row.
+		const canReopenWhileHidden = removeOverlayInputListener !== undefined;
 
-			emitAskUserBlockedEvent(pi, true);
-			try {
-				emitTerminalAttention();
-				const result = await ctx.ui.custom<QuestionnaireResult>(
-					makeSessionFactory({
-						ctx,
-						typed,
-						itemsByTab,
-						collapseKey,
-						canReopenWhileHidden,
-						sessionRef,
-						Session: QuestionnaireSession,
-					}),
-					{
-						overlay: true,
-						overlayOptions: {
-							anchor: "bottom-center",
-							width: "100%",
-							maxHeight: "100%",
-							margin: { left: 0, right: 0, bottom: 0 },
-						},
-						onHandle: (handle) => {
-							overlayHandleRef.current = handle;
-							sessionRef.current?.setOverlayHandle(handle);
-						},
+		emitAskUserBlockedEvent(pi, true);
+		try {
+			emitTerminalAttention();
+			const result = await ctx.ui.custom<QuestionnaireResult>(
+				makeSessionFactory({
+					ctx,
+					typed,
+					itemsByTab,
+					collapseKey,
+					canReopenWhileHidden,
+					sessionRef,
+					Session: QuestionnaireSession,
+				}),
+				{
+					overlay: true,
+					overlayOptions: {
+						anchor: "bottom-center",
+						width: "100%",
+						maxHeight: "100%",
+						margin: { left: 0, right: 0, bottom: 0 },
 					},
-				);
+					onHandle: (handle) => {
+						overlayHandleRef.current = handle;
+						sessionRef.current?.setOverlayHandle(handle);
+					},
+				},
+			);
 
-				if (result === undefined) {
-					return resolveUndefinedResult(ctx, typed);
-				}
-
-				return buildQuestionnaireResponse(result, typed);
-			} finally {
-				removeOverlayInputListener?.();
-				emitAskUserBlockedEvent(pi, false);
+			if (result === undefined) {
+				return resolveUndefinedResult(ctx, typed);
 			}
-		},
-	});
 
-	prewarmSessionGraph();
+			return buildQuestionnaireResponse(result, typed);
+		} finally {
+			removeOverlayInputListener?.();
+			emitAskUserBlockedEvent(pi, false);
+		}
+	};
 }
 
+export { ASK_USER_QUESTION_TOOL_NAME } from "./constants.js";
+export { PREWARM_DELAY_MS, registerAskUserQuestionTool } from "./registration.js";
 export { buildQuestionnaireResponse, buildToolResult };

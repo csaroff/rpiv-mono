@@ -20,9 +20,10 @@
  * the canonical `ROW_INTENT_META[kind].label`, never `displayLabel(kind)`.
  */
 
+import { I18N_NAMESPACE } from "../constants.js";
 import { ROW_INTENT_META, type SentinelKind } from "./row-intent.js";
 
-export const I18N_NAMESPACE = "@juicesharp/rpiv-ask-user-question";
+export { I18N_NAMESPACE } from "../constants.js";
 
 type ScopeFn = (key: string, fallback: string) => string;
 type I18nSDK = { scope: (namespace: string) => ScopeFn };
