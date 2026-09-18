@@ -285,16 +285,13 @@ export function routeKey(data: string, state: QuestionnaireState, runtime: Quest
 	// Collapse/expand toggle is a UI-level affordance — intercepted at the top so it
 	// works from every inner state (notes, inputMode, submit tab, multi-select)
 	// without reaching any branch that would otherwise consume the keystroke. The
-	// questionnaire overlay is fully hidden via `OverlayHandle.setHidden(true)` while
-	// collapsed; pi-tui's overlay stack updates accordingly, so overlay-aware consumers
-	// (e.g. `pi-station`) see no visible modal and chat scroll resumes. The toggle key is
-	// also captured at the raw terminal level via `ctx.ui.onTerminalInput` so it still
-	// routes here when the overlay is hidden (pi-tui does not deliver input to a hidden
-	// overlay's `component.handleInput`).
+	// dialog renders inline in the editor slot, so collapsing only shrinks its own
+	// render to one hint row; the component keeps focus, which is why this same key
+	// expands it again without any raw-terminal listener.
 	//
 	// The default `ctrl+]` is free in every mainstream macOS terminal (Terminal.app,
 	// iTerm2, Warp), every multiplexer (tmux, zellij, screen — none use it as a prefix),
-	// and the legacy telnet/ssh escape role doesn't apply because our overlay runs
+	// and the legacy telnet/ssh escape role doesn't apply because our dialog runs
 	// in-process. It is, however, awkward on keyboard layouts where `]` is on the
 	// shifted layer (Latin American `es-AR`/`es-MX` require `Ctrl+Shift+}` for `Ctrl+]`)
 	// — use the `collapseKey` config field to override.

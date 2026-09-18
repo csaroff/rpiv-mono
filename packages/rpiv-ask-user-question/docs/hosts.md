@@ -7,7 +7,7 @@ render at all.
 
 | Environment | What the model sees | What you see |
 | --- | --- | --- |
-| Interactive terminal | `ask_user_question` in its tool list | The full tabbed TUI overlay |
+| Interactive terminal | `ask_user_question` in its tool list | The full tabbed TUI dialog, rendered inline below the transcript |
 | RPC / ACP host (VS Code pendant, Zed, Paseo) | `ask_user_question` in its tool list | A sequence of the host's own native select and input dialogs |
 | Non-interactive run (no UI) | Nothing — the tool is removed | Nothing |
 
@@ -68,7 +68,6 @@ Some parts of the dialog exist only under the right conditions:
 | Side-by-side preview | An option carries a `preview`, and terminal and pane are both ≥ 100 columns |
 | Preview pane at all | Single-select questions only |
 | Collapse shortcut | `collapseKey` is not `"off"` |
-| Full overlay hide on collapse | The host also exposes raw terminal input (the only path that can reopen a hidden overlay); without it, collapsing shrinks the dialog to a visible one-line row instead |
 | Localized chrome | `@juicesharp/rpiv-i18n` is installed |
 
 ## Loading and startup cost

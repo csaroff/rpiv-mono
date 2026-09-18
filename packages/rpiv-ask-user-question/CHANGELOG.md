@@ -11,6 +11,10 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Markdown previews now document and cover syntax-highlighted fenced code blocks. Include a language tag (for example, `typescript`) in `options[].preview`; Pi's active Markdown theme colors supported languages and leaves unknown or omitted languages as plain code.
 
+### Changed
+
+- The questionnaire now renders inline below the transcript instead of as a bottom-anchored overlay. Pi composites overlays on top of the transcript without reflowing it, so the old dialog always covered the last lines of the agent's message — including the table or prose the question referred to (#47). Inline rendering pushes the transcript up instead, in both regular and fullscreen TUI modes. Collapsing with `collapseKey` still shrinks the dialog to a single hint row; it no longer hides it in Pi's overlay stack, and the one-shot "press … to reopen" notification is gone because the row stays focused and visible.
+
 ### Fixed
 
 - Bare carriage returns in model-supplied text (`question`, `header`, `options[].label`, `options[].description`, `options[].preview`) no longer fragment option rows or corrupt the terminal line: line terminators are normalized once at tool entry — `\r\n` becomes `\n`, a lone `\r` is deleted (never a space, never a newline) — before validation, the TUI, the RPC dialog walker, the answer envelope, and the `rpiv:ask-user:prompt` payload see the text (#192). As a consequence, labels that differed from a reserved or duplicate label only by a stray `\r` are now rejected as before the CR slipped in.

@@ -1,7 +1,7 @@
 import type { GuidanceFields } from "@juicesharp/rpiv-config";
 import { loadJsonConfigWithLegacyFallback, validateGuidanceFields } from "@juicesharp/rpiv-config";
 
-/** Key spec for the overlay collapse/expand shortcut, e.g. `"ctrl+]"` or `"alt+o"`. */
+/** Key spec for the collapse/expand shortcut, e.g. `"ctrl+]"` or `"alt+o"`. */
 export type CollapseKeySpec = string;
 
 export const DEFAULT_COLLAPSE_KEY: CollapseKeySpec = "ctrl+]";
@@ -50,7 +50,7 @@ function isValidCollapseKeySpec(spec: string): boolean {
 	// base key that is a single printable character or a named special key. A loose
 	// check is not enough — pi-tui's `parseKeyId` takes the LAST `+`-part as the key
 	// and ignores unknown parts, so a typo like `ctr+]` would silently match every
-	// bare `]` keypress (and the raw terminal listener would consume them globally).
+	// bare `]` keypress.
 	if (!spec) return false;
 	if (spec.startsWith("+") || spec.endsWith("+") || spec.includes("++")) return false;
 	const parts = spec.split("+");

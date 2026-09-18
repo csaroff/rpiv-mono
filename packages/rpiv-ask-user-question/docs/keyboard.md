@@ -72,15 +72,9 @@ keystrokes edit the buffer, so `n` types an `n`. Pasted line breaks are preserve
 
 ## Collapse mode
 
-`Ctrl+]` gets the dialog out of the way: the overlay is marked hidden in Pi's overlay
-stack and shrinks to a single dim hint row, so the transcript it was covering becomes
-readable and chat scrolling resumes. Press the same key to bring the questionnaire back
-with your answers intact. The first time you collapse, Pi notifies you with the key to
-press — that message names your configured key.
-
-Because Pi routes no input to a hidden overlay, the collapse key is additionally captured
-at the raw terminal level. It only acts when the questionnaire is hidden or focused, so a
-different overlay on top of it (for example `/btw`) keeps its keystrokes.
+`Ctrl+]` shrinks the dialog to a single dim hint row so the transcript above it is easier
+to read. Press the same key to bring the questionnaire back with your answers intact. The
+row stays focused and visible, so the shortcut always works without any extra plumbing.
 
 While collapsed, every keystroke other than cancel is ignored, so you cannot mutate
 answers you cannot see.

@@ -71,6 +71,7 @@ interface SessionTestOptions {
 	itemsByTab?: WrappingSelectItem[][];
 	editInput?: (value: string) => Promise<string | undefined>;
 	keybindings?: typeof keybindings;
+	collapseKey?: string;
 }
 
 function makeSession(options: SessionTestOptions = {}) {
@@ -84,8 +85,7 @@ function makeSession(options: SessionTestOptions = {}) {
 		done,
 		keybindings: options.keybindings ?? keybindings,
 		editInput: options.editInput ?? (async () => undefined),
-		collapseKey: "off",
-		canReopenWhileHidden: false,
+		collapseKey: options.collapseKey ?? "off",
 	});
 	return { session, done };
 }
@@ -298,17 +298,18 @@ describe("QuestionnaireSession — custom-answer drafts", () => {
 	});
 });
 
-describe("QuestionnaireSession — collapsed row with collapseKey 'off'", () => {
-	it("renders the cancel-only line, never a literal 'Off to expand' (#176)", () => {
-		// The router and raw listener never collapse when off, but
-		// toggleCollapsedExternal() is a public ungated entry — the collapsed row
-		// must not advertise a disabled shortcut if a caller forces it.
-		const { session } = makeSession();
-		session.toggleCollapsedExternal();
+describe("QuestionnaireSession — inline collapsed row", () => {
+	it("shrinks to a single expandable hint row and restores on the second press", () => {
+		// The dialog renders inline in the editor slot, so collapsing only shrinks it;
+		// the row keeps focus, which is why the same key expands it again.
+		const { session } = makeSession({ collapseKey: "ctrl+]" });
+		session.dispatch("\x1d");
 		const collapsed = session.component.render(120);
 		expect(collapsed).toHaveLength(1);
+		expect(collapsed[0]).toContain("to expand");
 		expect(collapsed[0]).toContain("Esc to cancel");
-		expect(collapsed[0]).not.toContain("to expand");
-		expect(collapsed[0]).not.toContain("Off");
+
+		session.dispatch("\x1d");
+		expect(session.component.render(120).length).toBeGreaterThan(1);
 	});
 });
