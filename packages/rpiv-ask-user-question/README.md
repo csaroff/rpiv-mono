@@ -39,11 +39,27 @@ When the model asks several things at once, `Tab` moves between them and a Submi
 
 - **Typed options instead of a wall of prose** — each question carries 2-4 authored choices, and every choice comes with a description of what it means or what it costs you.
 - **You can always answer in your own words** — a `Type something.` row is appended to every question, single- or multi-select, widens to the full pane while you type, keeps its multiline draft visible in that row while you browse, and supports Pi's `Shift+Enter` newline and `Ctrl+G` external-editor flows.
-- **Compare real artifacts, not just labels** — an option can carry a markdown `preview` (ASCII mockup, code, diagram, config) that renders in a bordered box beside the option list.
+- **Compare real artifacts, not just labels** — an option can carry a markdown `preview` (ASCII mockup, code, diagram, config) that renders in a bordered box beside the option list. Fenced code blocks use the language tag for Pi's syntax highlighting.
 - **One interruption, not five** — up to four questions arrive in a single tabbed dialog, and the Submit tab lists your answers and names anything still blank before you commit.
 - **Notes on any answer — or on all of them** — `n` opens a multiline note editor on any question tab, and on the Submit tab it opens one global note for the whole questionnaire. Per-question notes reach the model as `user notes: <text>`, the global note as `global note: <text>`; neither marks a question answered.
 - **Read the transcript behind the dialog** — `Ctrl+]` collapses the overlay so you can scroll the conversation, then brings it back with your answers intact.
 - **Works outside the terminal too** — in RPC and ACP hosts such as the VS Code pendant or Zed the questionnaire walks through the host's native dialogs (notes are terminal-only and do not carry over), and in non-interactive runs the tool is removed from the model's tool list instead of failing every call.
+
+## Syntax-highlighted code previews
+
+Use a fenced Markdown code block and include its language identifier. The preview is highlighted with Pi's active theme:
+
+````ts
+preview: [
+  "```typescript",
+  "export async function loadTodos() {",
+  "  return todoService.list();",
+  "}",
+  "```",
+].join("\n"),
+````
+
+The language identifier is passed through to Pi's Markdown renderer; unknown or omitted languages remain readable as plain code.
 
 ## Configuration
 

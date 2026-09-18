@@ -15,7 +15,8 @@ ask_user_question({
         {
           label: string,           // 1-5 words, max 60 chars
           description: string,     // what the choice means / its trade-off
-          preview?: string,        // markdown rendered next to the options
+          preview?: string,        // markdown rendered next to the options; fenced code
+                               // blocks use the language tag for Pi syntax highlighting
         },
         // … 2-4 options total
       ],

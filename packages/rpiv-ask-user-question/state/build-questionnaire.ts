@@ -119,6 +119,8 @@ class QuestionnaireBuilder {
 	private readonly collapseKey: string;
 
 	private readonly selectTheme: WrappingSelectTheme;
+	// Pi's Markdown theme includes the language-aware `highlightCode` hook. Markdown
+	// passes fenced-block language tags through it before the preview box strips fences.
 	private readonly markdownTheme = getMarkdownTheme();
 	private readonly notesInput: Editor;
 	private readonly inlineInput: Editor;

@@ -93,7 +93,8 @@ among others — set a different `collapseKey`, or `"off"` to disable the shortc
 
 Options render in a vertical list. When any option in a single-select question carries a
 `preview`, the dialog splits into a side-by-side layout with the option list on the left
-and a bordered monospace preview box on the right — but only when both the terminal and
+and a bordered monospace preview box on the right. Fenced code blocks use their Markdown
+language tag for Pi's syntax highlighting. This happens only when both the terminal and
 the dialog pane are at least 100 columns wide. Below that, the preview stacks underneath
 the options instead.
 

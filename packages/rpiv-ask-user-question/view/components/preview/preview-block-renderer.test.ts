@@ -7,10 +7,17 @@ let markdownConstructed = 0;
 vi.mock("@earendil-works/pi-tui", async (orig) => {
 	const actual = (await orig()) as Record<string, unknown>;
 	class FakeMarkdown {
-		constructor(public text: string) {
+		constructor(
+			public text: string,
+			_paddingX: number,
+			_paddingY: number,
+			private readonly theme: MarkdownTheme,
+		) {
 			markdownConstructed++;
 		}
 		render(width: number): string[] {
+			const match = this.text.match(/^```([^\n]*)\n([\s\S]*?)\n```$/);
+			if (match && this.theme.highlightCode) return this.theme.highlightCode(match[2], match[1] || undefined);
 			return [`MD[${width}]:${this.text.slice(0, Math.max(0, width - 4))}`];
 		}
 		invalidate(): void {}
@@ -40,6 +47,7 @@ const markdownTheme = {
 	italic: (t: string) => t,
 	strikethrough: (t: string) => t,
 	underline: (t: string) => t,
+	highlightCode: (code: string, lang?: string) => code.split("\n").map((line) => `HL[${lang ?? "plain"}]:${line}`),
 } as unknown as MarkdownTheme;
 
 const previewQuestion: QuestionData = {
@@ -84,6 +92,22 @@ describe("PreviewBlockRenderer — preview gating", () => {
 });
 
 describe("PreviewBlockRenderer.renderBlock", () => {
+	it("renders fenced code with the language-aware highlighter supplied by pi-tui", () => {
+		const r = new PreviewBlockRenderer({
+			question: {
+				...previewQuestion,
+				options: [{ label: "A", description: "", preview: "```ts\nconst answer = 42;\n```" }],
+			},
+			theme,
+			markdownTheme,
+		});
+
+		const lines = r.renderBlock(60, 0, "side-by-side", false, false);
+
+		expect(lines.join("\n")).toContain("HL[ts]:const answer = 42;");
+		expect(lines.join("\n")).not.toContain("```ts");
+	});
+
 	it("emits bordered box + blank + affordance when focused on preview-bearing option", () => {
 		const r = new PreviewBlockRenderer({ question: previewQuestion, theme, markdownTheme });
 		const lines = r.renderBlock(60, 0, "side-by-side", true, false);
