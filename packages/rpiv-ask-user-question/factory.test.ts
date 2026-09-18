@@ -1101,3 +1101,37 @@ describe("ask_user_question — multi-select notes end-to-end", () => {
 		expect(r?.details.answers[0].notes).toBe("hi");
 	});
 });
+
+describe("ask_user_question — inline rendering (never an overlay)", () => {
+	it("mounts in the editor slot so the transcript above stays visible", async () => {
+		// Pi composites overlays on top of the transcript without reflowing it, so a
+		// bottom-anchored dialog always hides the last lines of the agent's message
+		// (#47). The questionnaire must therefore be shown inline — `ctx.ui.custom`
+		// called with no overlay option — which pushes the transcript up instead of
+		// covering it. This is the regression guard for that requirement.
+		const tool = register();
+		let seenOptions: unknown = "custom was not called";
+		const custom = vi.fn((factory: unknown, options?: unknown) => {
+			seenOptions = options;
+			return new Promise((resolve) => {
+				const f = factory as (
+					tui: { requestRender: () => void; terminal: { columns: number; rows: number } },
+					theme: typeof identityTheme,
+					kb: ReturnType<typeof getKeybindings>,
+					done: (v: unknown) => void,
+				) => RenderableComponent;
+				const component = f(
+					{ requestRender: vi.fn(), terminal: { columns: 120, rows: 24 } },
+					identityTheme,
+					getKeybindings(),
+					resolve,
+				);
+				component.handleInput(KEY.ESC);
+			});
+		});
+		const ctx = { hasUI: true, ui: { custom } } as never;
+		await tool.execute?.("tc", threeOptionParams as never, undefined as never, undefined as never, ctx);
+
+		expect(seenOptions).toBeUndefined();
+	});
+});
